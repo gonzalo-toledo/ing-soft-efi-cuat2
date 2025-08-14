@@ -5,8 +5,11 @@ cffi==1.17.1
 charset-normalizer==3.4.2
 cssselect2==0.8.0
 Django==5.2.3
+django-filter==25.1
 django-widget-tweaks==1.5.0
+djangorestframework==3.16.1
 fonttools==4.59.0
+Markdown==3.8.2
 pillow==11.3.0
 pycparser==2.22
 pydyf==0.11.0

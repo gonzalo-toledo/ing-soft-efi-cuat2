@@ -47,6 +47,10 @@ INSTALLED_APPS = [
     'pasajeros',
     'vuelos',
     'reservas',
+    
+    #API
+    'rest_framework',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -173,3 +177,11 @@ sentry_sdk.init(
         sentry_logging,
     ],
 )
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}

@@ -30,6 +30,8 @@ urlpatterns = [
     path('reservas/', include('reservas.urls')),
     path('pasajeros/', include('pasajeros.urls')),
     path('sentry-debug/', trigger_error),
+    path('api-auth/', include('rest_framework.urls')),
+    path('api/', include('api.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
