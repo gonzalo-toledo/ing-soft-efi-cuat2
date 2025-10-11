@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
-from pasajeros.models import Pasajero
+from aviones.models import Avion, Asiento
+from reservas.models import Reserva, Boleto
 from home.models import Nacionalidad
+from pasajeros.models import Pasajero
 from vuelos.models import Vuelo, Aeropuerto
 from rest_framework import serializers
 
@@ -164,18 +166,171 @@ class AeropuertoSerializer(serializers.Serializer): #con serializer a diferencia
 class AeropuertoForVueloSerializer(serializers.Serializer):
     ciudad = serializers.CharField(max_length=100)
 
-#VUELO
-class VueloSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    avion = serializers.CharField(source='avion.modelo', read_only=True)  # Mostrar el modelo del avión
-    origen = serializers.CharField(source='origen.ciudad', read_only=True)  # Mostrar la ciudad del aeropuerto de origen. Esta es una forma de hacerlo
-    destino = AeropuertoForVueloSerializer(read_only=True)  # Mostrar solo la ciudad del aeropuerto de destino. Esta es la otra forma de hacerlo con otro serializer
-    fecha_salida = serializers.DateTimeField()
-    fecha_llegada = serializers.DateTimeField()
-    duracion = serializers.DurationField(read_only=True)  # Duración del vuelo, solo lectura
-    estado = serializers.CharField()
-    precio_base = serializers.DecimalField(max_digits=10, decimal_places=2)
-    total_vuelos = serializers.SerializerMethodField()  # Campo calculado
 
-    def get_total_vuelos(self, obj):
-        return Vuelo.objects.count()
+# ==========================================
+# NUEVO SERIALIZER PARA API REST DE VUELOS
+# ==========================================
+
+class VueloModelSerializer(serializers.ModelSerializer):
+    avion = serializers.CharField(source='avion.modelo', read_only=True)  # Mostrar el modelo del avión
+    origen = serializers.CharField(source='origen.ciudad', read_only=True)  # Mostrar la ciudad del aeropuerto de origen
+    destino = serializers.CharField(source='destino.ciudad', read_only=True)  # Mostrar la ciudad del aeropuerto de destino
+
+    #Lo siguiente nos va a permitir enviar el id del avion, origen y destino al crear o actualizar un vuelo
+    avion_id = serializers.PrimaryKeyRelatedField(
+        queryset=Avion.objects.all(), source='avion', write_only=True
+    )
+    origen_id = serializers.PrimaryKeyRelatedField(
+        queryset=Aeropuerto.objects.all(), source='origen', write_only=True
+    )
+    destino_id = serializers.PrimaryKeyRelatedField(
+        queryset=Aeropuerto.objects.all(), source='destino', write_only=True
+    )
+    
+    class Meta:
+        model = Vuelo
+        fields = [
+            'id',
+            'avion', 'avion_id',
+            'origen', 'origen_id',
+            'destino', 'destino_id',
+            'fecha_salida',
+            'fecha_llegada',
+            'duracion',
+            'estado',
+            'precio_base',
+        ]
+        read_only_fields = ['duracion']
+        
+    
+    def validate(self, data):
+        """
+        Validar que la fecha de salida sea anterior a la fecha de llegada.
+        """
+        if data['fecha_salida'] >= data['fecha_llegada']:
+            raise serializers.ValidationError("La fecha de salida debe ser anterior a la fecha de llegada.")
+        
+
+        if data['origen'] == data['destino']:
+            raise serializers.ValidationError("El aeropuerto de origen y destino no pueden ser el mismo.")
+        
+        return data
+
+# ======================================
+# RESERVAS
+# ======================================
+class ReservaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    pasajero = PasajeroSerializer(read_only=True)
+    vuelo = VueloModelSerializer(read_only=True)
+    fecha_reserva = serializers.DateTimeField(read_only=True)
+    estado = serializers.ChoiceField(choices=[('CONFIRMADA', 'Confirmada'),('PENDIENTE', 'Pendiente') ,('CANCELADA', 'Cancelada')])
+    
+    vuelo_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vuelo.objects.all(), source='vuelo', write_only=True
+    )
+    pasajero_id = serializers.PrimaryKeyRelatedField(
+        queryset=Pasajero.objects.all(), source='pasajero', write_only=True
+    )
+    asiento_id = serializers.PrimaryKeyRelatedField(
+        queryset=Asiento.objects.all(), source='asiento', write_only=True
+    )
+    
+    def create(self, validated_data):
+        
+        return Reserva.objects.create(**validated_data)
+    
+    def update(self, instance, validated_data):
+        instance.estado = validated_data.get('estado', instance.estado)
+        instance.save()
+        return instance
+    
+    def validate(self, data):
+        """
+        Validaciones:
+        - El asiento pertenece al avión del vuelo.
+        - El asiento no está ocupado en ese vuelo.
+        - El pasajero no tiene otra reserva activa para el mismo vuelo.
+        """
+        vuelo = data['vuelo']
+        pasajero = data['pasajero']
+        asiento = data['asiento']
+
+        if asiento.avion != vuelo.avion:
+            raise serializers.ValidationError({
+                'asiento': "El asiento seleccionado no pertenece al avión de este vuelo."
+            })
+
+        if Reserva.objects.filter(
+            vuelo=vuelo,
+            asiento=asiento,
+            activa=True,
+            estado__in=['Confirmada', 'Pendiente']
+        ).exists():
+            raise serializers.ValidationError({
+                'asiento': "Este asiento ya está reservado para este vuelo."
+            })
+
+        if Reserva.objects.filter(
+            vuelo=vuelo,
+            pasajero=pasajero,
+            activa=True,
+            estado__in=['Confirmada', 'Pendiente']
+        ).exists():
+            raise serializers.ValidationError({
+                'pasajero': "El pasajero ya tiene una reserva activa en este vuelo."
+            })
+
+        return data
+
+    
+# ======================================
+# BOLETOS
+# ======================================
+
+class BoletoSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    reserva = ReservaSerializer(read_only=True)
+    coidgo_barra = serializers.CharField(read_only=True)
+    fecha_emision = serializers.DateTimeField(read_only=True)
+    estado = serializers.ChoiceField(choices=[('EMITIDO', 'Emitido'), ('ANULADO', 'Anulado')])
+    
+    reserva_id = serializers.PrimaryKeyRelatedField(
+        queryset=Reserva.objects.all(), source='reserva', write_only=True
+    )
+    
+    def create(self, validated_data):
+        return Boleto.objects.create(**validated_data)
+    
+    def update(self, instance, validated_data):
+        instance.reserva = validated_data.get('reserva', instance.reserva)
+        instance.codigo_barra = validated_data.get('codigo_barra', instance.codigo_barra)
+        instance.fecha_emision = validated_data.get('fecha_emision', instance.fecha_emision)
+        instance.estado = validated_data.get('estado', instance.estado)
+        instance.save()
+        return instance
+
+# ======================================
+# ESTADÍSTICAS / DASHBOARD
+# ======================================
+
+class EstadisticasGeneralesSerializer(serializers.Serializer):
+    total_vuelos = serializers.IntegerField()
+    total_pasajeros = serializers.IntegerField()
+    total_reservas = serializers.IntegerField()
+    total_boletos = serializers.IntegerField()
+
+
+class OcupacionVueloSerializer(serializers.Serializer):
+    vuelo_id = serializers.IntegerField()
+    origen = serializers.CharField()
+    destino = serializers.CharField()
+    fecha_salida = serializers.DateTimeField()
+    asientos_totales = serializers.IntegerField()
+    asientos_ocupados = serializers.IntegerField()
+    porcentaje_ocupacion = serializers.FloatField()
+
+
+class DestinoPopularSerializer(serializers.Serializer):
+    destino = serializers.CharField()
+    total_reservas = serializers.IntegerField()

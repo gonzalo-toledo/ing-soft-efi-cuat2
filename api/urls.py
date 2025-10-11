@@ -1,25 +1,30 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
-    SpectacularSwaggerView,
     SpectacularRedocView,
+    SpectacularSwaggerView,
 )
+from rest_framework.routers import DefaultRouter
 
 from api.views import (
-    UserListCreateView,
-    UserRetrieveUpdateDestroyView,
+    AeropuertoDetailAPIView,
+    AeropuertoListCreateAPIView,
+    BoletoDetailAPIView,
+    BoletoListCreateAPIView,
+    DestinosPopularesAPIView,
+    EstadisticasGeneralesAPIView,
+    OcupacionVuelosAPIView,
     PasajeroListCreateView,
     RegistroCreateView,
-    AeropuertoListCreateAPIView,
-    AeropuertoDetailAPIView,
-    VueloListCreateAPIView,
-    # 👉 más vistas se irán sumando aquí (reservas, boletos, reportes…)
+    ReservaDetailAPIView,
+    ReservaListCreateAPIView,
+    UserListCreateView,
+    UserRetrieveUpdateDestroyView,
+    VueloViewSet,
 )
 
 router = DefaultRouter()
-# 👉 cuando tengas ViewSets (por ej. VuelosViewSet), los registramos:
-# router.register('vuelos', VuelosViewSet, basename='vuelos')
+router.register('vuelos', VueloViewSet, basename='vuelos')
 
 urlpatterns = [
     # === Usuarios ===
@@ -37,10 +42,19 @@ urlpatterns = [
     path('aeropuertos/<int:pk>/', AeropuertoDetailAPIView.as_view(), name='aeropuerto-detail'),
 
     # === Vuelos ===
-    path('vuelos/', VueloListCreateAPIView.as_view(), name='vuelos-list'),
-    # Cuando agreguemos detalle/edición/borrado:
-    # path('vuelos/<int:pk>/', VueloDetailAPIView.as_view(), name='vuelos-detail'),
+    # path('vuelos/', VueloListCreateAPIView.as_view(), name='vuelos-list'),
 
+    # === Reservas y Boletos (ViewSets) ===
+    path('reservas/', ReservaListCreateAPIView.as_view(), name='reservas-list'),
+    path('reservas/<int:pk>/', ReservaDetailAPIView.as_view(), name='reserva-detail'),
+    path('boletos/', BoletoListCreateAPIView.as_view(), name='boletos-list'),
+    path('boletos/<int:pk>/', BoletoDetailAPIView.as_view(), name='boleto-detail'),
+    
+    # === Estadísticas ===
+    path('estadisticas/general/', EstadisticasGeneralesAPIView.as_view(), name='estadisticas-general'),
+    path('estadisticas/vuelos_ocupacion/', OcupacionVuelosAPIView.as_view(), name='estadisticas-vuelos-ocupacion'),
+    path('estadisticas/destinos_populares/', DestinosPopularesAPIView.as_view(), name='estadisticas-destinos-populares'),
+    
     # === Documentación OpenAPI / Swagger ===
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
