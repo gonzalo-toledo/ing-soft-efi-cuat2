@@ -1,0 +1,61 @@
+{% load widget_tweaks %}
+
+<div class="modal fade" id="crearPasajeroModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-0 overflow-hidden">
+      <div 
+        class="modal-body text-white position-relative">
+        <div class="text-center mb-4">
+          <h1 class="fw-bold">SkyWay Airlines</h1>
+          <h5 class="mt-2">Crear Pasajero</h5>
+        </div>
+        
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+
+        <form action="{% url 'crear_pasajero' %}" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+
+          <div class="mb-3">
+            <label for="nombre" class="form-label">{{ pasajero_form.nombre.label }}</label>
+            {{ pasajero_form.nombre }}
+          </div>
+          <div class="mb-3">
+            <label for="apellido" class="form-label">{{ pasajero_form.apellido.label }}</label>
+            {{ pasajero_form.apellido }}
+          </div>
+          <div class="mb-3">
+            <label for="pasaporte" class="form-label">{{ pasajero_form.pasaporte.label }}</label>
+            {{ pasajero_form.pasaporte }}
+          </div>
+          <div class="mb-3">
+            <label for="fecha_nacimiento" class="form-label">{{ pasajero_form.fecha_nacimiento.label }}</label>
+            {{ pasajero_form.fecha_nacimiento }}
+          </div>
+          <div class="mb-3">
+            <label for="nacionalidad" class="form-label">{{ pasajero_form.nacionalidad.label }}</label>
+            {{ pasajero_form.nacionalidad }}
+          </div>
+          <div class="mb-3">
+            <label for="genero" class="form-label">{{ pasajero_form.genero.label }}</label>
+            {{ pasajero_form.genero }}
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">{{ pasajero_form.email.label }}</label>
+            {{ pasajero_form.email }}
+          </div>
+          <div class="mb-3">
+            <label for="telefono" class="form-label">{{ pasajero_form.telefono.label }}</label>
+            {{ pasajero_form.telefono }}
+          </div>
+
+          <div class="d-grid mt-3">
+            <button type="submit" class="btn btn-success btn-lg shadow">Crear Pasajero</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+

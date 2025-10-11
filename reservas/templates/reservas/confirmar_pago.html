@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Confirmar Pago{% endblock %}
+{% block content %}
+<div class="card border-success">
+  <div class="card-header bg-success text-white">Confirmar Pago</div>
+  <div class="card-body">
+    <p>¿Estás seguro que querés confirmar el pago de esta reserva?</p>
+    <p><strong>Vuelo:</strong> {{ reserva.vuelo }}</p>
+    <p><strong>Asiento:</strong> {{ reserva.asiento }}</p>
+    <p><strong>Precio:</strong> ${{ reserva.vuelo.precio_base }}</p>
+    
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success">Confirmar Pago</button>
+    </form>
+  </div>
+</div>
+<!-- Enlaces -->
+    <div class="card mt-4 border-0 shadow">
+        <div class="card-body d-flex flex-wrap gap-3 justify-content-between">
+            <a href="{% url 'reserva_detail' reserva.id %}" class="btn btn-outline-primary btn-md rounded-pill"><i class="bi bi-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+{% endblock %}

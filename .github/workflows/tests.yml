@@ -1,0 +1,39 @@
+name: Run Tests #nombre del Action (workflow)
+
+on: #Disparador. Puede haber mas de un disparador para un mismo workflow
+  pull_request: #Cuando se abre/actualiza un PR
+    branches: [main] #Solo cuando el PR apunte a main
+  push: #Cuando se hace push
+    branches: [main] #Solo en la rama main
+
+concurrency: #Evita que se ejecuten multiples instancias del workflow al mismo tiempo
+  group: ${{ github.workflow}}-${{ github.ref }} #Grupo unico por workflow y rama  - RunTests/main
+  cancel-in-progress: true #Cancela las instancias en progreso si se dispara una nueva. cancela la que llego primero, le da prioridad a la ultima
+
+jobs: #Trabajos que se van a ejecutar en el workflow. Puede haber mas de un job
+  test: #Nombre del job principal
+    name: Django pytest #nombre del job
+    runs-on: ubuntu-latest #Sistema operativo donde se va a ejecutar el job. Crea una maquina virtual nueva
+    timeout-minutes: 3 #Tiempo maximo de ejecucion del job. Si se supera, se cancela el job
+    env: #Variables de entorno que se van a usar en el job
+      PYTHONPATH: ${{ github.workspace }} #Agrega el workspace al PYTHONPATH para que Django pueda encontrar los archivos
+      PYTHONDONTWRITEBYTECODE: 1 #Evita que Python cree archivos .pyc
+      PYTHONNUMBER: 1 #Evita que Python use notacion cientifica en los numeros grandes
+
+    steps: #Pasos que se van a ejecutar en el job. Puede haber mas de un paso
+      - name: Checkout #Clona el repo al runner
+        uses: actions/checkout@v3 #Accion que se va a usar. En este caso, la accion oficial de GitHub para hacer checkout del codigo
+      
+      - name : Setup Python #Instala Python
+        uses: actions/setup-python@v5 #Accion oficial de GitHub para instalar Python
+        with:
+          python-version: '3.12' #Version de Python a instalar
+          cache: 'pip' #Cachea las dependencias instaladas con pip para acelerar futuras ejecuciones
+
+      - name: Install Dependencies #Instala las dependencias
+        run: | #Comandos a ejecutar en el paso
+          python -m pip install --upgrade pip 
+          pip install -r requirements.txt 
+      
+      - name: Run Tests (pytest) #Ejecuta los tests
+        run: pytest -q #Corre test en modo silencioso (quiet)
