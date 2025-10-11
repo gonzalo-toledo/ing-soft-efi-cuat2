@@ -1,199 +1,77 @@
-FUNCIONALIDADES OBLIGATORIAS PENDIENTES:
-2. Gestión de Pasajeros:
-   - Información personal (nombre, documento, contacto)
-   - Historial de vuelos
+EVALUACIÓN FINAL INTEGRADORA – SISTEMA DE GESTIÓN DE AEROLÍNEA (Parte 2)
+Objetivo
+Extender el sistema desarrollado en la Parte 1 para exponer sus funcionalidades mediante una API REST utilizando Django Rest Framework (DRF).
+ El objetivo es que la aerolínea pueda ofrecer acceso a terceros (por ejemplo, aplicaciones móviles o portales externos) de forma segura, documentada y consistente.
 
-3. Sistema de Reservas:
-   - Gestión de estados (disponible, reservado, ocupado)
-   - Generación de boletos electrónicos 
+Trabajo en Grupos
+Los grupos no podrán superar los 3 integrantes.
+Cada miembro debe haber realizado al menos 1 commit en el repositorio de GitHub.
+Se debe continuar trabajando sobre el repositorio utilizado en la Parte 1.
 
-
-ERRORES:
-- No permitir hacer reservas de vuelos con fecha anterior a la actual. Deberia cambiar de estado al pasar la fecha. 
-- alerta al crear una reserva es largo y no se cierra. Ver que se comporten todos los mensajes igual.
-
-
-
-MEJORAS PENDIENTES:
-- Al crear reserva ofrecer con modal crear otra reserva - finalizar vuelo
-- Mostrar en reservas y boletos solo los activos por usuario y ofrecer el historial
-
-
-
-EVALUACIÓN FINAL INTEGRADORA - SISTEMA DE GESTIÓN DE AEROLÍNEA
-
-
-Objetivo:
-Desarrollar un sistema web completo para gestionar una aerolínea, implementando los conceptos aprendidos durante el primer semestre.
-
-
-Trabajo en Grupos:
-- Los grupos no podrán superar los 3 integrantes
-- Cada miembro del grupo debe haber realizado al menos 1 commit en el repositorio de GitHub
-
-
-Requisitos Técnicos:
-1. Desarrollar una aplicación web utilizando Django
-2. Implementar base de datos relacional (SQLite o PostgreSQL)
-3. Crear una interfaz de usuario amigable
-4. Implementar autenticación de usuarios
-5. Manejar correctamente las relaciones entre modelos
-
-
-Funcionalidades Obligatorias:
-1. Gestión de Vuelos:
-   - Crear, editar y eliminar vuelos (en el Admin), ver vuelos (Admin y Web para el usuario)
-   - Registrar información de vuelo (origen, destino, fecha, hora, duración)
-   - Asignar avión a cada vuelo
-
-
-2. Gestión de Pasajeros:
-   - Registro de pasajeros
-   - Información personal (nombre, documento, contacto)
-   - Historial de vuelos
-
-
-3. Sistema de Reservas:
-   - Visualización de disponibilidad de asientos
-   - Reserva de asientos específicos
-   - Gestión de estados (disponible, reservado, ocupado)
-   - Generación de boletos electrónicos
-
-
-4. Gestión de Aviones:
-   - Registro de flota
-   - Definición de layout de asientos
-   - Mantenimiento de información técnica
-
-
-5. Reportes:
-   - Listado de pasajeros por vuelo
-
-
-Consideraciones:
-- Implementar validaciones en el backend y frontend
-- Manejar correctamente los errores
-- Documentar el código
-- Implementar pruebas unitarias (Opcional)
-- Seguir buenas prácticas de programación
-- Respetar los principios SOLID
-
-
-Entrega:
-- Código fuente completo
-- Documentación técnica
-- Base de datos
-- Pruebas unitarias (Opcional)
+Requisitos Técnicos
+Implementar Django Rest Framework (DRF).
+Seguir el patrón Service – Repository ya utilizado en la Parte 1.
+Incorporar serializers para transformar los modelos en JSON.
+Crear vistas API con ViewSets o APIView.
+Configurar urls para exponer los endpoints.
+Documentar la API (puede ser con Swagger o DRF-YASG). Lo veremos en la clase de mañana
+Manejar autenticación (Token o JWT).
+Manejar permisos y roles de usuarios en los endpoints.
 
 
 
 
-Sugerencia de modelado
-
-Entidades Principales:
 
 
-1. AVIÓN
-   - id (PK)
-   - modelo
-   - capacidad
-   - filas
-   - columnas
+Funcionalidades Obligatorias
+Gestión de Vuelos (API)
+Listar todos los vuelos disponibles.
+Obtener detalle de un vuelo.
+Filtrar vuelos por origen, destino y fecha.
+Crear, editar y eliminar vuelos (solo administradores).
 
 
-2. VUELO
-   - id (PK)
-   - avion_id (FK)
-   - origen
-   - destino
-   - fecha_salida
-   - fecha_llegada
-   - duracion
-   - estado
-   - precio_base
+Gestión de Pasajeros (API)
+Registrar un pasajero. 
+Consultar información de un pasajero.
+Listar reservas asociadas a un pasajero.
 
 
-3. PASAJERO
-   - id (PK)
-   - nombre
-   - documento
-   - email
-   - telefono
-   - fecha_nacimiento
-   - tipo_documento
+Sistema de Reservas (API)
+Crear una reserva para un pasajero en un vuelo.
+Seleccionar asiento disponible.
+Cambiar estado de una reserva (confirmar, cancelar).
 
 
-4. RESERVA
-   - id (PK)
-   - vuelo_id (FK)
-   - pasajero_id (FK)
-   - asiento_id (FK)
-   - estado
-   - fecha_reserva
-   - precio
-   - codigo_reserva
+Gestión de Aviones y Asientos (API)
+Listar aviones registrados.
+Obtener layout de asientos de un avión.
+Verificar disponibilidad de un asiento en un vuelo.
 
 
-5. ASIENTO
-   - id (PK)
-   - avion_id (FK)
-   - numero
-   - fila
-   - columna
-   - tipo
-   - estado
+Boletos (API)
+Generar boleto a partir de una reserva confirmada.
+Consultar información de un boleto por código.
 
 
-6. USUARIO
-   - id (PK)
-   - username
-   - password
-   - email
-   - rol
+Reportes (API)
+Endpoint para obtener listado de pasajeros por vuelo.
+Endpoint para obtener reservas activas de un pasajero.
 
 
-7. BOLETO
-   - id (PK)
-   - reserva_id (FK)
-   - codigo_barra
-   - fecha_emision
-   - estado
+
+Consideraciones
+Implementar validaciones en serializers y services.
+Manejar errores con respuestas HTTP adecuadas (400, 401, 404, 500).
+Agregar tests de endpoints (Opcional).
+Respetar principios REST y buenas prácticas.
+Código documentado y limpio.
 
 
-Relaciones:
-1. AVIÓN - VUELO (1:N)
-   - Un avión puede tener múltiples vuelos
-   - Un vuelo pertenece a un solo avión
 
-
-2. VUELO - RESERVA (1:N)
-   - Un vuelo puede tener múltiples reservas
-   - Una reserva pertenece a un solo vuelo
-
-
-3. PASAJERO - RESERVA (1:N)
-   - Un pasajero puede tener múltiples reservas
-   - Una reserva pertenece a un solo pasajero
-
-
-4. ASIENTO - RESERVA (1:1)
-   - Un asiento puede estar reservado por una reserva
-   - Una reserva se asocia con un solo asiento
-
-
-5. USUARIO - VUELO (1:N)
-   - Un usuario puede gestionar múltiples vuelos
-   - Un vuelo puede ser gestionado por múltiples usuarios
-
-
-6. RESERVA - BOLETO (1:1)
-   - Una reserva genera un boleto
-   - Un boleto está asociado a una reserva
-
-
-Restricciones:
-- Un asiento no puede estar reservado más de una vez por vuelo
-- Un pasajero no puede tener más de una reserva por vuelo
-- Los estados de los asientos deben ser consistentes con las reservas
-- Los datos de los pasajeros deben ser válidos y únicos por documento
-- Los vuelos deben tener fechas y horas válidas
+Entrega
+Código fuente completo en el mismo repositorio de la Parte 1.
+Documentación de la API (Swagger, Postman Collection o README detallado).
+Base de datos lista para pruebas.
+Tests unitarios de endpoints (Opcional).
+Fecha de entrega maxima 6/11

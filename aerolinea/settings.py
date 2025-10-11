@@ -51,6 +51,10 @@ INSTALLED_APPS = [
     #api
     'rest_framework',
     'api',
+    
+    # Documentacion API
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
 ]
 
 MIDDLEWARE = [
@@ -172,9 +176,27 @@ sentry_sdk.init(
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny'
     ],
     #'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     #'PAGE_SIZE': 10
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API ITEC',
+    'DESCRIPTION': 'Documentacion de la API del proyecto de Aerolínea - ITEC 2025',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'SECURITY_SCHEMES': {
+        'Bearer': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'Token'
+        }
+    }
 }
