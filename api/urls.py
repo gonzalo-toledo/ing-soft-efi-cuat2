@@ -1,12 +1,14 @@
-from django.urls import include, path
+from django.urls import path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework.routers import DefaultRouter
 
 from api.views import (
+    AvionDetailAPIView,
+    AvionListCreateAPIView,
+    AsientoListAPIView,
     AeropuertoDetailAPIView,
     AeropuertoListCreateAPIView,
     BoletoDetailAPIView,
@@ -20,11 +22,9 @@ from api.views import (
     ReservaListCreateAPIView,
     UserListCreateView,
     UserRetrieveUpdateDestroyView,
-    VueloViewSet,
+    VueloListCreateAPIView,
+    VueloDetailAPIView,
 )
-
-router = DefaultRouter()
-router.register('vuelos', VueloViewSet, basename='vuelos')
 
 urlpatterns = [
     # === Usuarios ===
@@ -41,25 +41,29 @@ urlpatterns = [
     path('aeropuertos/', AeropuertoListCreateAPIView.as_view(), name='aeropuertos-list'),
     path('aeropuertos/<int:pk>/', AeropuertoDetailAPIView.as_view(), name='aeropuerto-detail'),
 
-    # === Vuelos ===
-    # path('vuelos/', VueloListCreateAPIView.as_view(), name='vuelos-list'),
+    # === Aviones y Asientos ===
+    path("aviones/", AvionListCreateAPIView.as_view(), name="avion-list"),
+    path("aviones/<int:pk>/", AvionDetailAPIView.as_view(), name="avion-detail"),
+    path("aviones/<int:avion_id>/asientos/", AsientoListAPIView.as_view(), name="avion-asientos"),
+    path("asientos/", AsientoListAPIView.as_view(), name="asiento-list"),
 
-    # === Reservas y Boletos (ViewSets) ===
+    # === Vuelos ===
+    path('vuelos/', VueloListCreateAPIView.as_view(), name='vuelos-list'),
+    path('vuelos/<int:pk>/', VueloDetailAPIView.as_view(), name='vuelo-detail'),
+
+    # === Reservas y Boletos ===
     path('reservas/', ReservaListCreateAPIView.as_view(), name='reservas-list'),
     path('reservas/<int:pk>/', ReservaDetailAPIView.as_view(), name='reserva-detail'),
     path('boletos/', BoletoListCreateAPIView.as_view(), name='boletos-list'),
     path('boletos/<int:pk>/', BoletoDetailAPIView.as_view(), name='boleto-detail'),
-    
+
     # === Estadísticas ===
     path('estadisticas/general/', EstadisticasGeneralesAPIView.as_view(), name='estadisticas-general'),
     path('estadisticas/vuelos_ocupacion/', OcupacionVuelosAPIView.as_view(), name='estadisticas-vuelos-ocupacion'),
     path('estadisticas/destinos_populares/', DestinosPopularesAPIView.as_view(), name='estadisticas-destinos-populares'),
-    
+
     # === Documentación OpenAPI / Swagger ===
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-
-    # === Router para futuros ViewSets ===
-    path('', include(router.urls)),
 ]

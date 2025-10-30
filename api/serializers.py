@@ -167,8 +167,27 @@ class AeropuertoForVueloSerializer(serializers.Serializer):
     ciudad = serializers.CharField(max_length=100)
 
 
+
+# ======================================
+# AVIONES
+# ======================================
+
+class AvionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Avion
+        fields = ['id', 'modelo', 'filas', 'columnas', 'capacidad']
+
+
+class AsientoSerializer(serializers.ModelSerializer):
+    avion = serializers.StringRelatedField(read_only=True)
+    class Meta:
+        model = Asiento
+        fields = ['id', 'numero', 'fila', 'columna', 'tipo', 'avion']
+
+
+
 # ==========================================
-# NUEVO SERIALIZER PARA API REST DE VUELOS
+# VUELOS
 # ==========================================
 
 class VueloModelSerializer(serializers.ModelSerializer):

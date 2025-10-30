@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from rest_framework import status
 from rest_framework.generics import (
     CreateAPIView,
     ListCreateAPIView,
@@ -32,8 +32,15 @@ from api.serializers import (
 )
 from pasajeros.models import Pasajero
 from reservas.models import Boleto, Reserva
-from vuelos.models import Aeropuerto, Vuelo
+from vuelos.models import Vuelo
 from aviones.models import Asiento 
+
+from aviones.services.avion_service import AvionService
+from aviones.services.asiento_service import AsientoService
+from api.serializers import AvionSerializer, AsientoSerializer
+# Servicios de vuelos
+from vuelos.services.aeropuerto_service import AeropuertoService
+from vuelos.services.vuelo_service import VueloService
 
 # USERS
 
@@ -115,67 +122,124 @@ class RegistroCreateView(CreateAPIView):
 
 
 # AEROPUERTOS (con APIView)
-class AeropuertoListCreateAPIView(
-    APIView, AuthAdminViewMixin
-):  # con APIViewtengo que definir get y post
+class AeropuertoListCreateAPIView(APIView, AuthAdminViewMixin):
     """
     GET /api/aeropuertos/ -> lista todos los aeropuertos
     POST /api/aeropuertos/ -> crea un nuevo aeropuerto
     """
 
     def get(self, request):
-        qs = Aeropuerto.objects.all().order_by("id")
-        serializer = AeropuertoSerializer(qs, many=True)
+        aeropuertos = AeropuertoService.get_all()
+        serializer = AeropuertoSerializer(aeropuertos, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         serializer = AeropuertoSerializer(data=request.data)
         if serializer.is_valid():
-            instance = serializer.save()
+            aeropuerto = AeropuertoService.create(**serializer.validated_data)
             return Response(
-                AeropuertoSerializer(instance).data, status=status.HTTP_201_CREATED
+                AeropuertoSerializer(aeropuerto).data, status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AeropuertoDetailAPIView(APIView, AuthAdminViewMixin):
     """
-    GET /api/vuelos/<id>/ -> detalle de un aeropuerto
-    PUT /api/vuelos/<id>/ -> actualiza un aeropuerto
-    PATCH /api/vuelos/<id>/ -> actualiza parcialmente un aeropuerto
-    DELETE /api/vuelos/<id>/ -> elimina un aeropuerto
+    GET /api/aeropuertos/<id>/ -> detalle de un aeropuerto
+    PUT /api/aeropuertos/<id>/ -> actualizar aeropuerto
+    DELETE /api/aeropuertos/<id>/ -> eliminar aeropuerto
     """
 
-    def get_object(self, pk):
-        return get_object_or_404(Aeropuerto, pk=pk)
-
     def get(self, request, pk):
-        instance = self.get_object(pk)
-        return Response(AeropuertoSerializer(instance).data)
+        try:
+            aeropuerto = AeropuertoService.get_by_id(pk)
+            serializer = AeropuertoSerializer(aeropuerto)
+            return Response(serializer.data)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request, pk):
-        instance = self.get_object(pk)
-        serializer = AeropuertoSerializer(instance, data=request.data)
+        serializer = AeropuertoSerializer(data=request.data)
         if serializer.is_valid():
-            instance = serializer.save()
-            return Response(AeropuertoSerializer(instance).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        instance = self.get_object(pk)
-        serializer = AeropuertoSerializer(instance, data=request.data, partial=True)
-        if serializer.is_valid():
-            instance = serializer.save()
-            return Response(AeropuertoSerializer(instance).data)
+            aeropuerto = AeropuertoService.update(pk, **serializer.validated_data)
+            return Response(AeropuertoSerializer(aeropuerto).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        instance = self.get_object(pk)
-        instance.delete()
-        return Response(
-            {"detail": "Aeropuerto eliminado correctamente."},
-            status=status.HTTP_204_NO_CONTENT,
-        )
+        try:
+            ok = AeropuertoService.delete(pk)
+            if ok:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {"detail": "No se pudo eliminar el aeropuerto"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+# AVIONES
+
+class AvionListCreateAPIView(APIView, AuthAdminViewMixin):
+    """
+    GET /api/aviones/ -> lista todos los aviones
+    POST /api/aviones/ -> crea un nuevo avión
+    """
+
+    def get(self, request):
+        aviones = AvionService.get_all()
+        serializer = AvionSerializer(aviones, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = AvionSerializer(data=request.data)
+        if serializer.is_valid():
+            avion = AvionService.create(**serializer.validated_data)
+            return Response(AvionSerializer(avion).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AvionDetailAPIView(APIView, AuthAdminViewMixin):
+    """
+    GET /api/aviones/<id>/ -> detalle de un avión
+    PUT /api/aviones/<id>/ -> actualizar avión
+    DELETE /api/aviones/<id>/ -> eliminar avión
+    """
+
+    def get(self, request, pk):
+        try:
+            avion = AvionService.get_by_id(pk)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(AvionSerializer(avion).data)
+
+    def put(self, request, pk):
+        serializer = AvionSerializer(data=request.data)
+        if serializer.is_valid():
+            avion = AvionService.update(pk, **serializer.validated_data)
+            return Response(AvionSerializer(avion).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        ok = AvionService.delete(pk)
+        if ok:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'No se pudo eliminar el avión'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AsientoListAPIView(APIView, AuthAdminViewMixin):
+    """
+    GET /api/asientos/ -> lista todos los asientos
+    GET /api/aviones/<avion_id>/asientos/ -> lista asientos de un avión
+    """
+
+    def get(self, request, avion_id=None):
+        if avion_id:
+            asientos = AsientoService.get_by_avion(avion_id)
+        else:
+            asientos = AsientoService.get_all()
+        serializer = AsientoSerializer(asientos, many=True)
+        return Response(serializer.data)
+
 
 
 # VUELOS (con APIView)
@@ -191,42 +255,63 @@ class AeropuertoDetailAPIView(APIView, AuthAdminViewMixin):
 #         return Response(serializer.data)
 
 
-class VueloViewSet(viewsets.ModelViewSet):
+class VueloListCreateAPIView(APIView, AuthAdminViewMixin):
     """
-    API REST completa para gestión de vuelos.
-    Soporta:
-    - GET /api/vuelos/ -> listar vuelos
-    - GET /api/vuelos/{id}/ -> detalle
-    - POST /api/vuelos/ -> crear vuelo (solo admin)
-    - PUT/PATCH /api/vuelos/{id}/ -> actualizar vuelo (solo admin)
-    - DELETE /api/vuelos/{id}/ -> eliminar vuelo (solo admin)
-    Filtrable por ?origen=EZE&destino=MAD&fecha=2025-11-10
+    GET /api/vuelos/ -> lista todos los vuelos (con filtros)
+    POST /api/vuelos/ -> crea un nuevo vuelo
     """
 
-    queryset = (
-        Vuelo.objects.select_related("avion", "origen", "destino").all().order_by("id")
-    )
-    serializer_class = VueloModelSerializer
+    def get(self, request):
+        origen = request.query_params.get("origen")
+        destino = request.query_params.get("destino")
+        fecha = request.query_params.get("fecha")
 
-    def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAdminUser()]
-        return super().get_permissions()
+        vuelos = VueloService.filter(origen=origen, destino=destino, fecha=fecha)
+        serializer = VueloModelSerializer(vuelos, many=True)
+        return Response(serializer.data)
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        origen = self.request.query_params.get("origen")
-        destino = self.request.query_params.get("destino")
-        fecha = self.request.query_params.get("fecha")
+    def post(self, request):
+        serializer = VueloModelSerializer(data=request.data)
+        if serializer.is_valid():
+            vuelo = VueloService.create(**serializer.validated_data)
+            return Response(VueloModelSerializer(vuelo).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if origen:
-            queryset = queryset.filter(origen__iata__iexact=origen)
-        if destino:
-            queryset = queryset.filter(destino__iata__iexact=destino)
-        if fecha:
-            queryset = queryset.filter(fecha_salida__date=fecha)
 
-        return queryset.order_by("fecha_salida")
+class VueloDetailAPIView(APIView, AuthAdminViewMixin):
+    """
+    GET /api/vuelos/<id>/ -> detalle de un vuelo
+    PUT /api/vuelos/<id>/ -> actualizar vuelo
+    DELETE /api/vuelos/<id>/ -> eliminar vuelo
+    """
+
+    def get(self, request, pk):
+        try:
+            vuelo = VueloService.get_by_id(pk)
+            serializer = VueloModelSerializer(vuelo)
+            return Response(serializer.data)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, pk):
+        serializer = VueloModelSerializer(data=request.data)
+        if serializer.is_valid():
+            vuelo = VueloService.update(pk, **serializer.validated_data)
+            return Response(VueloModelSerializer(vuelo).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            ok = VueloService.delete(pk)
+            if ok:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {"detail": "No se pudo eliminar el vuelo"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 # =====================================================
@@ -234,7 +319,7 @@ class VueloViewSet(viewsets.ModelViewSet):
 # =====================================================
 
 
-class ReservaListCreateAPIView(ListCreateAPIView):
+class ReservaListCreateAPIView(ListCreateAPIView, AuthViewMixin):
     """
     GET /api/reservas/ -> listar reservas
     POST /api/reservas/ -> crear una nueva reserva
@@ -252,7 +337,7 @@ class ReservaListCreateAPIView(ListCreateAPIView):
         serializer.save(activa=True, estado="Pendiente")
 
 
-class ReservaDetailAPIView(APIView):
+class ReservaDetailAPIView(APIView, AuthViewMixin):
     """
     GET /api/reservas/<id>/ -> detalle de una reserva
     UPDATE /api/reservas/<id>/ -> actualizar reserva
@@ -292,7 +377,7 @@ class ReservaDetailAPIView(APIView):
 # =====================================================
 
 
-class BoletoListCreateAPIView(ListCreateAPIView):
+class BoletoListCreateAPIView(ListCreateAPIView, AuthViewMixin):
     """
     GET /api/boletos/ -> listar boletos
     POST /api/boletos/ -> generar nuevo boleto desde reserva confirmada
@@ -306,7 +391,7 @@ class BoletoListCreateAPIView(ListCreateAPIView):
     serializer_class = BoletoSerializer
 
 
-class BoletoDetailAPIView(RetrieveUpdateDestroyAPIView):
+class BoletoDetailAPIView(RetrieveUpdateDestroyAPIView, AuthViewMixin):
     """
     GET /api/boletos/<id>/ -> detalle de un boleto
     PUT /api/boletos/<id>/ -> actualizar boleto
@@ -325,7 +410,7 @@ class BoletoDetailAPIView(RetrieveUpdateDestroyAPIView):
 # ESTADISTICAS GENERALES DE VUELOS
 #====================================================
 
-class EstadisticasGeneralesAPIView(APIView):
+class EstadisticasGeneralesAPIView(APIView, AuthAdminViewMixin):
     """
     GET /api/estadisticas/general/
     Devuelve conteos generales del sistema.
@@ -341,7 +426,7 @@ class EstadisticasGeneralesAPIView(APIView):
         return Response(serializer.data)
 
 
-class OcupacionVuelosAPIView(APIView):
+class OcupacionVuelosAPIView(APIView, AuthAdminViewMixin):
     """
     GET /api/estadisticas/vuelos_ocupacion/
     Devuelve el porcentaje de ocupación de cada vuelo.
@@ -376,7 +461,7 @@ class OcupacionVuelosAPIView(APIView):
         return Response(serializer.data)
 
 
-class DestinosPopularesAPIView(APIView):
+class DestinosPopularesAPIView(APIView, AuthViewMixin):
     """
     GET /api/estadisticas/destinos_populares/
     Devuelve los destinos con más reservas activas.
