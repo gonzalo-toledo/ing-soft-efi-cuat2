@@ -16,7 +16,9 @@ from api.views import (
     DestinosPopularesAPIView,
     EstadisticasGeneralesAPIView,
     OcupacionVuelosAPIView,
+    PasajeroDetailView,
     PasajeroListCreateView,
+    PasajeroReservasView,
     RegistroCreateView,
     ReservaDetailAPIView,
     ReservaListCreateAPIView,
@@ -33,6 +35,10 @@ urlpatterns = [
 
     # === Pasajeros por usuario ===
     path('users/<int:user_pk>/pasajeros/', PasajeroListCreateView.as_view(), name='pasajeros-list'),
+    
+    #=== Detalle pasajero ===
+    path('users/<int:user_pk>/pasajeros/<int:pk>/', PasajeroDetailView.as_view(), name='pasajero-detail'),
+    path('users/<int:user_pk>/pasajeros/<int:pk>/reservas/', PasajeroReservasView.as_view(), name='pasajero-reservas'),
 
     # === Registro (usuario + pasajero) ===
     path('registro/', RegistroCreateView.as_view(), name='registro'),

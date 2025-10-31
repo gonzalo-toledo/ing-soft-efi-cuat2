@@ -6,11 +6,14 @@ from rest_framework.generics import (
     CreateAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
+    RetrieveAPIView,
+    ListAPIView,
 )
 from rest_framework.permissions import (
     IsAdminUser,
     IsAuthenticated,
 )  # Se usa con permission_classes
+from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -35,9 +38,14 @@ from reservas.models import Boleto, Reserva
 from vuelos.models import Vuelo
 from aviones.models import Asiento 
 
+#servicios de pasajeros
+from pasajeros.services.pasajero_service import PasajeroService
+
+#servicios de aviones
 from aviones.services.avion_service import AvionService
 from aviones.services.asiento_service import AsientoService
 from api.serializers import AvionSerializer, AsientoSerializer
+
 # Servicios de vuelos
 from vuelos.services.aeropuerto_service import AeropuertoService
 from vuelos.services.vuelo_service import VueloService
@@ -92,7 +100,7 @@ class UserRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
 
 
 # PASAJEROS
-class PasajeroListCreateView(ListCreateAPIView, AuthViewMixin):
+class PasajeroListCreateView(AuthViewMixin, ListCreateAPIView):
     """
     GET /api/users/<user_pk>/pasajeros/ -> lista pasajeros del usuario
     POST /api/users/<user_pk>/pasajeros/ -> crea pasajero para el usuario
@@ -103,13 +111,46 @@ class PasajeroListCreateView(ListCreateAPIView, AuthViewMixin):
     # redefino el queryset para filtrar por usuario:
     def get_queryset(self):
         user_pk = self.kwargs["user_pk"]
-        return Pasajero.objects.filter(usuario_id=user_pk)
+        return PasajeroService.obtener_por_usuario(user_pk)
 
     def perform_create(self, serializer):
         user_pk = self.kwargs["user_pk"]  # obtengo el user_pk de la URL
         usuario = get_object_or_404(User, pk=user_pk)
-        serializer.save(usuario=usuario)
+        data = serializer.validated_data
+        data['usuario'] = usuario
+        pasajero = PasajeroService.registrar_pasajero(data)
+        serializer.instance = pasajero
 
+class PasajeroDetailView(AuthViewMixin, RetrieveAPIView): #RetrieveAPIView hace solo GET
+    """
+    GET /api/pasajeros/<id>/ -> detalle de un pasajero
+    """
+
+    serializer_class = PasajeroSerializer
+    # queryset = Pasajero.objects.all()  # requerido por DRF para get_object()
+
+    def get_object(self):
+        user_pk = self.kwargs["user_pk"]
+        pasajero_pk = self.kwargs["pk"]
+        pasajero = PasajeroService.obtener_por_id(pasajero_pk)
+        if pasajero.usuario_id != user_pk:
+            raise Http404("Este pasajero no pertenece al usuario indicado.")
+        return pasajero
+
+class PasajeroReservasView(AuthViewMixin, ListAPIView):
+    """
+    GET /api/pasajeros/<id>/reservas/ -> lista reservas de un pasajero
+    """
+
+    serializer_class = ReservaSerializer
+
+    def get_queryset(self):
+        user_pk = self.kwargs["user_pk"]
+        pasajero_pk = self.kwargs["pk"]
+        pasajero = PasajeroService.obtener_por_id(pasajero_pk)
+        if pasajero.usuario_id != user_pk:
+            raise Http404("Este pasajero no pertenece al usuario indicado.")
+        return PasajeroService.obtener_reservas(pasajero_pk)
 
 # USUARIO + PASAJERO
 class RegistroCreateView(CreateAPIView):
@@ -255,64 +296,116 @@ class AsientoListAPIView(APIView, AuthAdminViewMixin):
 #         return Response(serializer.data)
 
 
-class VueloListCreateAPIView(APIView, AuthAdminViewMixin):
+
+#---------CON APIVIEW Y SERVICIOS ---------
+
+# class VueloListCreateAPIView(APIView, AuthAdminViewMixin):
+#     """
+#     GET /api/vuelos/ -> lista todos los vuelos (con filtros)
+#     POST /api/vuelos/ -> crea un nuevo vuelo
+#     """
+
+#     def get(self, request):
+#         origen = request.query_params.get("origen")
+#         destino = request.query_params.get("destino")
+#         fecha = request.query_params.get("fecha")
+
+#         vuelos = VueloService.filter(origen=origen, destino=destino, fecha=fecha)
+#         serializer = VueloModelSerializer(vuelos, many=True)
+#         return Response(serializer.data)
+
+#     def post(self, request):
+#         serializer = VueloModelSerializer(data=request.data)
+#         if serializer.is_valid():
+#             vuelo = VueloService.create(**serializer.validated_data)
+#             return Response(VueloModelSerializer(vuelo).data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# class VueloDetailAPIView(APIView, AuthAdminViewMixin):
+#     """
+#     GET /api/vuelos/<id>/ -> detalle de un vuelo
+#     PUT /api/vuelos/<id>/ -> actualizar vuelo
+#     DELETE /api/vuelos/<id>/ -> eliminar vuelo
+#     """
+
+#     def get(self, request, pk):
+#         try:
+#             vuelo = VueloService.get_by_id(pk)
+#             serializer = VueloModelSerializer(vuelo)
+#             return Response(serializer.data)
+#         except ValueError as e:
+#             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+#     def put(self, request, pk):
+#         serializer = VueloModelSerializer(data=request.data)
+#         if serializer.is_valid():
+#             vuelo = VueloService.update(pk, **serializer.validated_data)
+#             return Response(VueloModelSerializer(vuelo).data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     def delete(self, request, pk):
+#         try:
+#             ok = VueloService.delete(pk)
+#             if ok:
+#                 return Response(status=status.HTTP_204_NO_CONTENT)
+#             return Response(
+#                 {"detail": "No se pudo eliminar el vuelo"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         except ValueError as e:
+#             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+
+# --------- CON GENERIC VIEWS Y SERVICIOS ---------
+class VueloListCreateAPIView(AuthAdminViewMixin, ListCreateAPIView):
     """
     GET /api/vuelos/ -> lista todos los vuelos (con filtros)
     POST /api/vuelos/ -> crea un nuevo vuelo
     """
+    serializer_class = VueloModelSerializer
+    queryset = Vuelo.objects.all()
 
-    def get(self, request):
-        origen = request.query_params.get("origen")
-        destino = request.query_params.get("destino")
-        fecha = request.query_params.get("fecha")
+    def get_queryset(self):
+        origen = self.request.query_params.get("origen")
+        destino = self.request.query_params.get("destino")
+        fecha = self.request.query_params.get("fecha")
+        return VueloService.filter(origen=origen, destino=destino, fecha=fecha)
 
-        vuelos = VueloService.filter(origen=origen, destino=destino, fecha=fecha)
-        serializer = VueloModelSerializer(vuelos, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = VueloModelSerializer(data=request.data)
-        if serializer.is_valid():
-            vuelo = VueloService.create(**serializer.validated_data)
-            return Response(VueloModelSerializer(vuelo).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def perform_create(self, serializer):
+        """
+        Crea un vuelo usando el service y asigna el resultado al serializer.
+        """
+        validated_data = serializer.validated_data
+        vuelo = VueloService.create(**validated_data)
+        serializer.instance = vuelo
 
 
-class VueloDetailAPIView(APIView, AuthAdminViewMixin):
+class VueloDetailAPIView(AuthAdminViewMixin, RetrieveUpdateDestroyAPIView):
     """
     GET /api/vuelos/<id>/ -> detalle de un vuelo
     PUT /api/vuelos/<id>/ -> actualizar vuelo
     DELETE /api/vuelos/<id>/ -> eliminar vuelo
     """
+    serializer_class = VueloModelSerializer
+    queryset = Vuelo.objects.all()  # requerido por DRF para get_object()
 
-    def get(self, request, pk):
+    def get_object(self):
+        pk = self.kwargs.get("pk")
         try:
-            vuelo = VueloService.get_by_id(pk)
-            serializer = VueloModelSerializer(vuelo)
-            return Response(serializer.data)
+            return VueloService.get_by_id(pk)
         except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+            raise Http404(str(e))
 
-    def put(self, request, pk):
-        serializer = VueloModelSerializer(data=request.data)
-        if serializer.is_valid():
-            vuelo = VueloService.update(pk, **serializer.validated_data)
-            return Response(VueloModelSerializer(vuelo).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def perform_update(self, serializer):
+        validated_data = serializer.validated_data
+        pk = self.kwargs.get("pk")
+        vuelo = VueloService.update(pk, **validated_data)
+        serializer.instance = vuelo
 
-    def delete(self, request, pk):
-        try:
-            ok = VueloService.delete(pk)
-            if ok:
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response(
-                {"detail": "No se pudo eliminar el vuelo"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
-
-
+    def perform_destroy(self, instance):
+        pk = self.kwargs.get("pk")
+        VueloService.delete(pk)
 
 # =====================================================
 # RESERVAS

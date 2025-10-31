@@ -29,6 +29,30 @@ class PasajeroService:
         return PasajeroRepository.get_all()
 
     @staticmethod
+    def obtener_por_id(pasajero_id):
+        """ Obtiene un pasajero por su ID.
+        :param pasajero_id: ID del pasajero a buscar.
+        :return: Instancia del pasajero.
+        """
+        return PasajeroRepository.get_by_id(pasajero_id)
+    
+    @staticmethod
+    def obtener_por_usuario(user_id):
+        """ Obtiene todos los pasajeros asociados a un usuario.
+        :param user_id: ID del usuario.
+        :return: Lista de instancias de Pasajero.
+        """
+        return PasajeroRepository.get_all_by_user(user_id)
+    
+    @staticmethod
+    def obtener_reservas(pasajero_id):
+        """ Obtiene todas las reservas asociadas a un pasajero.
+        :param pasajero_id: ID del pasajero.
+        :return: Lista de instancias de Reserva.
+        """
+        return PasajeroRepository.get_reservas_by_pasajero(pasajero_id)
+
+    @staticmethod
     def eliminar_pasajero(pasajero_id):
         """ Elimina un pasajero del sistema por su ID.
         :param pasajero_id: ID del pasajero a eliminar.
