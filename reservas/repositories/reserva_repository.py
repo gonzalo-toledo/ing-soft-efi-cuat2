@@ -49,5 +49,9 @@ class ReservaRepository:
         return reserva
 
     @staticmethod
+    def get_reservas_by_pasajero(pasajero_id):
+        return Reserva.objects.filter(pasajero_id=pasajero_id).select_related('vuelo', 'asiento')
+    
+    @staticmethod
     def delete(reserva):
         reserva.delete()

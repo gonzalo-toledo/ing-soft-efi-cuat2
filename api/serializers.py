@@ -74,6 +74,7 @@ class PasajeroSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pasajero
         fields = [
+            'id',
             'nombre',
             'apellido',
             'pasaporte',
@@ -243,7 +244,7 @@ class ReservaSerializer(serializers.Serializer):
     pasajero = PasajeroSerializer(read_only=True)
     vuelo = VueloModelSerializer(read_only=True)
     fecha_reserva = serializers.DateTimeField(read_only=True)
-    estado = serializers.ChoiceField(choices=[('CONFIRMADA', 'Confirmada'),('PENDIENTE', 'Pendiente') ,('CANCELADA', 'Cancelada')])
+    # estado = serializers.ChoiceField(choices=[('CONFIRMADA', 'Confirmada'),('PENDIENTE', 'Pendiente') ,('CANCELADA', 'Cancelada')])
     
     vuelo_id = serializers.PrimaryKeyRelatedField(
         queryset=Vuelo.objects.all(), source='vuelo', write_only=True
@@ -255,8 +256,14 @@ class ReservaSerializer(serializers.Serializer):
         queryset=Asiento.objects.all(), source='asiento', write_only=True
     )
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            # Mostrar solo los pasajeros del usuario autenticado
+            self.fields["pasajero_id"].queryset = Pasajero.objects.filter(usuario=request.user)
+            
     def create(self, validated_data):
-        
         return Reserva.objects.create(**validated_data)
     
     def update(self, instance, validated_data):

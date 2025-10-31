@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -49,6 +50,9 @@ from api.serializers import AvionSerializer, AsientoSerializer
 # Servicios de vuelos
 from vuelos.services.aeropuerto_service import AeropuertoService
 from vuelos.services.vuelo_service import VueloService
+
+#servicios de reservas
+from reservas.services.reserva_service import ReservaService
 
 # USERS
 
@@ -411,13 +415,11 @@ class VueloDetailAPIView(AuthAdminViewMixin, RetrieveUpdateDestroyAPIView):
 # RESERVAS
 # =====================================================
 
-
-class ReservaListCreateAPIView(ListCreateAPIView, AuthViewMixin):
+class ReservaAdminListAPIView(AuthAdminViewMixin, ListCreateAPIView):
     """
-    GET /api/reservas/ -> listar reservas
-    POST /api/reservas/ -> crear una nueva reserva
+    GET /api/admin/reservas/ -> lista todas las reservas (solo para administradores)
+    POST /api/admin/reservas/ -> crear una reserva sin restricciones de usuario
     """
-
     queryset = (
         Reserva.objects.select_related("vuelo", "pasajero", "asiento")
         .all()
@@ -426,45 +428,108 @@ class ReservaListCreateAPIView(ListCreateAPIView, AuthViewMixin):
     serializer_class = ReservaSerializer
 
     def perform_create(self, serializer):
-        # Al crear una reserva, marcamos como activa y pendiente
+        # Permitir crear reserva en nombre de cualquier pasajero
         serializer.save(activa=True, estado="Pendiente")
 
 
-class ReservaDetailAPIView(APIView, AuthViewMixin):
+class ReservaListCreateAPIView(AuthViewMixin, ListCreateAPIView):
+    serializer_class = ReservaSerializer
+
+    def get_queryset(self):
+        # Solo reservas del usuario autenticado
+        return Reserva.objects.filter(
+            pasajero__usuario=self.request.user
+        ).select_related("vuelo", "asiento", "pasajero")
+
+    def get_serializer_context(self):
+        # Pasar el request al serializer (para filtrar pasajeros)
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+class ReservaDetailAPIView(AuthViewMixin, APIView):
     """
-    GET /api/reservas/<id>/ -> detalle de una reserva
-    UPDATE /api/reservas/<id>/ -> actualizar reserva
-    DELETE /api/reservas/<id>/ -> eliminar reserva
+    PATCH /api/reservas/<id>/estado/
+    Cambiar el estado de una reserva (Confirmada / Cancelada)
     """
-
-    def get(self, request, pk):
-        reserva = get_object_or_404(
-            Reserva.objects.select_related("vuelo", "pasajero", "asiento"), pk=pk
+    def patch(self, request, pk):
+        # Garantizá que sea del usuario logueado
+        get_object_or_404(
+            Reserva.objects.filter(pasajero__usuario=request.user), pk=pk
         )
-        serializer = ReservaSerializer(reserva)
-        return Response(serializer.data)
+
+        nuevo_estado = request.data.get("estado")
+        if nuevo_estado not in ["Confirmada", "Cancelada"]:
+            return Response(
+                {"detail": "El estado debe ser Confirmada o Cancelada."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            reserva = ReservaService.cambiar_estado(pk, nuevo_estado)
+            return Response(ReservaSerializer(reserva).data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# class ReservaDetailAPIView(APIView, AuthViewMixin):
+#     """
+#     GET /api/reservas/<id>/ -> detalle de una reserva
+#     UPDATE /api/reservas/<id>/ -> actualizar reserva
+#     DELETE /api/reservas/<id>/ -> eliminar reserva
+#     """
+
+#     def get(self, request, pk):
+#         reserva = get_object_or_404(
+#             Reserva.objects.select_related("vuelo", "pasajero", "asiento"), pk=pk
+#         )
+#         serializer = ReservaSerializer(reserva)
+#         return Response(serializer.data)
     
-    def put(self, request, pk):
-        reserva = get_object_or_404(
-            Reserva.objects.select_related("vuelo", "pasajero", "asiento"), pk=pk
-        )
-        serializer = ReservaSerializer(reserva, data=request.data)
-        if serializer.is_valid():
-            reserva = serializer.save()
-            return Response(ReservaSerializer(reserva).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def put(self, request, pk):
+#         reserva = get_object_or_404(
+#             Reserva.objects.select_related("vuelo", "pasajero", "asiento"), pk=pk
+#         )
+#         serializer = ReservaSerializer(reserva, data=request.data)
+#         if serializer.is_valid():
+#             reserva = serializer.save()
+#             return Response(ReservaSerializer(reserva).data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def delete(self, request, pk):
-        reserva = get_object_or_404(
-            Reserva.objects.select_related("vuelo", "pasajero", "asiento"), pk=pk
-        )
-        reserva.delete()
-        return Response(
-            {"detail": "Reserva eliminada correctamente."},
-            status=status.HTTP_204_NO_CONTENT,
-        )
+#     def delete(self, request, pk):
+#         reserva = get_object_or_404(
+#             Reserva.objects.select_related("vuelo", "pasajero", "asiento"), pk=pk
+#         )
+#         reserva.delete()
+#         return Response(
+#             {"detail": "Reserva eliminada correctamente."},
+#             status=status.HTTP_204_NO_CONTENT,
+#         )
 
+# class CrearReservaAPIView(AuthViewMixin, APIView):
+#     """
+#     POST /api/pasajeros/<pasajero_id>/vuelos/<vuelo_id>/reservas/
+#     Crea una reserva para un pasajero en un vuelo.
+#     """
 
+#     def post(self, request, pasajero_id, vuelo_id):
+#         asiento_id = request.data.get("asiento_id")
+
+#         data = {
+#             "pasajero": pasajero_id,
+#             "vuelo": vuelo_id,
+#             "asiento": asiento_id,
+#         }
+
+#         try:
+#             reserva = ReservaService.crear_reserva(request.user, data)
+#             serializer = ReservaSerializer(reserva)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         except ValidationError as e:
+#             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+#         except Exception as e:
+#             return Response({"detail": f"Error al crear la reserva: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        
 # =====================================================
 # BOLETOS
 # =====================================================

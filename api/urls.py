@@ -26,6 +26,8 @@ from api.views import (
     UserRetrieveUpdateDestroyView,
     VueloListCreateAPIView,
     VueloDetailAPIView,
+    ReservaAdminListAPIView
+    
 )
 
 urlpatterns = [
@@ -59,7 +61,9 @@ urlpatterns = [
 
     # === Reservas y Boletos ===
     path('reservas/', ReservaListCreateAPIView.as_view(), name='reservas-list'),
-    path('reservas/<int:pk>/', ReservaDetailAPIView.as_view(), name='reserva-detail'),
+    path("reservas/<int:pk>/estado/", ReservaDetailAPIView.as_view(), name="reserva-estado"),
+    path('admin/reservas/', ReservaAdminListAPIView.as_view(), name='admin-reservas-list'),
+    # path('reservas/<int:pk>/', ReservaDetailAPIView.as_view(), name='reserva-detail'),
     path('boletos/', BoletoListCreateAPIView.as_view(), name='boletos-list'),
     path('boletos/<int:pk>/', BoletoDetailAPIView.as_view(), name='boleto-detail'),
 
