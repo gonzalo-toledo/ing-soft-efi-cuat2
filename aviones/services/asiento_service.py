@@ -68,3 +68,10 @@ class AsientoService:
             )
         except ValueError as e:
             return e
+        
+@staticmethod
+def get_by_avion(avion_id: int) -> list[Asiento]:
+    """
+    Obtener todos los asientos de un avión específico.
+    """
+    return AsientoRepository.get_by_avion(avion_id)
