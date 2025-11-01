@@ -26,7 +26,10 @@ from api.views import (
     UserRetrieveUpdateDestroyView,
     VueloListCreateAPIView,
     VueloDetailAPIView,
-    ReservaAdminListAPIView
+    ReservaAdminListAPIView,
+    BoletoAdminListApiView,
+    BoletoListApiView,
+    BoletoPorCodiogoAPIView
     
 )
 
@@ -64,8 +67,10 @@ urlpatterns = [
     path("reservas/<int:pk>/estado/", ReservaDetailAPIView.as_view(), name="reserva-estado"),
     path('admin/reservas/', ReservaAdminListAPIView.as_view(), name='admin-reservas-list'),
     # path('reservas/<int:pk>/', ReservaDetailAPIView.as_view(), name='reserva-detail'),
-    path('boletos/', BoletoListCreateAPIView.as_view(), name='boletos-list'),
-    path('boletos/<int:pk>/', BoletoDetailAPIView.as_view(), name='boleto-detail'),
+    path('boletos/', BoletoListApiView.as_view(), name='boletos-list'),
+    path('admin/boletos/', BoletoAdminListApiView.as_view(), name='admin-boletos-list'),
+    # path('boletos/<int:pk>/', BoletoDetailAPIView.as_view(), name='boleto-detail'),
+    path('boletos/codigo/<str:codigo_barra>/', BoletoPorCodiogoAPIView.as_view(), name='boleto-por-codigo'),
 
     # === Estadísticas ===
     path('estadisticas/general/', EstadisticasGeneralesAPIView.as_view(), name='estadisticas-general'),

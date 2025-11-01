@@ -534,11 +534,9 @@ class ReservaDetailAPIView(AuthViewMixin, APIView):
 # BOLETOS
 # =====================================================
 
-
-class BoletoListCreateAPIView(ListCreateAPIView, AuthViewMixin):
+class BoletoAdminListApiView(AuthAdminViewMixin, ListAPIView):
     """
-    GET /api/boletos/ -> listar boletos
-    POST /api/boletos/ -> generar nuevo boleto desde reserva confirmada
+    GET /api/admin/boletos/ -> listar todos los boletos (solo admin)
     """
 
     queryset = (
@@ -547,21 +545,63 @@ class BoletoListCreateAPIView(ListCreateAPIView, AuthViewMixin):
         .order_by("-fecha_emision")
     )
     serializer_class = BoletoSerializer
-
-
-class BoletoDetailAPIView(RetrieveUpdateDestroyAPIView, AuthViewMixin):
+    
+class BoletoListApiView(AuthViewMixin, ListAPIView):
     """
-    GET /api/boletos/<id>/ -> detalle de un boleto
-    PUT /api/boletos/<id>/ -> actualizar boleto
-    DELETE /api/boletos/<id>/ -> eliminar boleto
+    GET /api/boletos/ -> listar boletos del usuario autenticado
     """
 
-    queryset = (
-        Boleto.objects.select_related("reserva", "reserva__vuelo")
-        .all()
-        .order_by("-fecha_emision")
-    )
     serializer_class = BoletoSerializer
+
+    def get_queryset(self):
+        return Boleto.objects.filter(
+            reserva__pasajero__usuario=self.request.user
+        ).select_related("reserva", "reserva__vuelo").order_by("-fecha_emision")
+        
+class BoletoPorCodiogoAPIView(AuthViewMixin, RetrieveAPIView):
+    """
+    GET /api/boletos/codigo/<codigo_barra>/ -> detalle de un boleto por código de barra
+    """
+
+    serializer_class = BoletoSerializer
+
+    def get_object(self):
+        codigo_barra = self.kwargs["codigo_barra"]
+        boleto = get_object_or_404(
+            Boleto.objects.select_related("reserva", "reserva__vuelo"),
+            codigo_barra=codigo_barra,
+            reserva__pasajero__usuario=self.request.user
+        )
+        return boleto
+    
+
+# class BoletoListCreateAPIView(ListCreateAPIView, AuthViewMixin):
+#     """
+#     GET /api/boletos/ -> listar boletos
+#     POST /api/boletos/ -> generar nuevo boleto desde reserva confirmada
+#     """
+
+#     queryset = (
+#         Boleto.objects.select_related("reserva", "reserva__vuelo")
+#         .all()
+#         .order_by("-fecha_emision")
+#     )
+#     serializer_class = BoletoSerializer
+
+
+# class BoletoDetailAPIView(RetrieveUpdateDestroyAPIView, AuthViewMixin):
+#     """
+#     GET /api/boletos/<id>/ -> detalle de un boleto
+#     PUT /api/boletos/<id>/ -> actualizar boleto
+#     DELETE /api/boletos/<id>/ -> eliminar boleto
+#     """
+
+#     queryset = (
+#         Boleto.objects.select_related("reserva", "reserva__vuelo")
+#         .all()
+#         .order_by("-fecha_emision")
+#     )
+#     serializer_class = BoletoSerializer
 
 
 #====================================================
