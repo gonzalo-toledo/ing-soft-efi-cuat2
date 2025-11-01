@@ -22,3 +22,7 @@ class BoletoRepository:
     @staticmethod
     def delete(boleto):
         boleto.delete()
+
+    @staticmethod
+    def get_by_user(user):
+        return Boleto.objects.filter(reserva__pasajero__usuario=user)

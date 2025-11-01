@@ -54,6 +54,9 @@ from vuelos.services.vuelo_service import VueloService
 #servicios de reservas
 from reservas.services.reserva_service import ReservaService
 
+#servicios de boletos
+from reservas.services.boleto_service import BoletoService
+
 # USERS
 
 # class UserListView(ListAPIView):
@@ -414,50 +417,53 @@ class VueloDetailAPIView(AuthAdminViewMixin, RetrieveUpdateDestroyAPIView):
 # =====================================================
 # RESERVAS
 # =====================================================
-
 class ReservaAdminListAPIView(AuthAdminViewMixin, ListCreateAPIView):
     """
-    GET /api/admin/reservas/ -> lista todas las reservas (solo para administradores)
+    GET /api/admin/reservas/ -> lista todas las reservas (solo admin)
     POST /api/admin/reservas/ -> crear una reserva sin restricciones de usuario
     """
-    queryset = (
-        Reserva.objects.select_related("vuelo", "pasajero", "asiento")
-        .all()
-        .order_by("-fecha_reserva")
-    )
-    serializer_class = ReservaSerializer
-
-    def perform_create(self, serializer):
-        # Permitir crear reserva en nombre de cualquier pasajero
-        serializer.save(activa=True, estado="Pendiente")
-
-
-class ReservaListCreateAPIView(AuthViewMixin, ListCreateAPIView):
     serializer_class = ReservaSerializer
 
     def get_queryset(self):
-        # Solo reservas del usuario autenticado
-        return Reserva.objects.filter(
-            pasajero__usuario=self.request.user
-        ).select_related("vuelo", "asiento", "pasajero")
+        return ReservaService.get_all().order_by("-fecha_reserva")
 
+    def perform_create(self, serializer):
+        serializer.save(activa=True, estado="Pendiente")
+    
+class ReservaListCreateAPIView(AuthViewMixin, ListCreateAPIView):
+    serializer_class = ReservaSerializer
+    """
+    GET /api/reservas/ -> lista reservas del usuario autenticado
+    POST /api/reservas/ -> crea una nueva reserva para el usuario autenticado    
+    """
+    def get_queryset(self):
+        # Solo reservas del usuario autenticado
+        return ReservaService.get_by_user(self.request.user).order_by("-fecha_reserva")
+    
     def get_serializer_context(self):
         # Pasar el request al serializer (para filtrar pasajeros)
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
-
+    
 class ReservaDetailAPIView(AuthViewMixin, APIView):
     """
-    PATCH /api/reservas/<id>/estado/
-    Cambiar el estado de una reserva (Confirmada / Cancelada)
+    GET /api/reservas/<id>/estado/ -> detalle del estado de una reserva
+    PATCH /api/reservas/<id>/estado/ -> cambiar el estado de una reserva (Confirmada / Cancelada)
     """
+    def get(self, request, pk):
+        reserva = ReservaService.get_by_id(pk)
+        return Response(
+            {"id": reserva.id, "estado": reserva.estado},
+            status=status.HTTP_200_OK
+        )
+    
     def patch(self, request, pk):
         # Garantizá que sea del usuario logueado
         get_object_or_404(
-            Reserva.objects.filter(pasajero__usuario=request.user), pk=pk
+            ReservaService.get_by_user(request.user), pk=pk
         )
-
+        
         nuevo_estado = request.data.get("estado")
         if nuevo_estado not in ["Confirmada", "Cancelada"]:
             return Response(
@@ -533,19 +539,17 @@ class ReservaDetailAPIView(AuthViewMixin, APIView):
 # =====================================================
 # BOLETOS
 # =====================================================
-
+    
 class BoletoAdminListApiView(AuthAdminViewMixin, ListAPIView):
     """
     GET /api/admin/boletos/ -> listar todos los boletos (solo admin)
     """
-
-    queryset = (
-        Boleto.objects.select_related("reserva", "reserva__vuelo")
-        .all()
-        .order_by("-fecha_emision")
-    )
+    
     serializer_class = BoletoSerializer
     
+    def get_queryset(self):
+        return BoletoService.get_all().order_by("-fecha_emision")
+
 class BoletoListApiView(AuthViewMixin, ListAPIView):
     """
     GET /api/boletos/ -> listar boletos del usuario autenticado
@@ -554,26 +558,19 @@ class BoletoListApiView(AuthViewMixin, ListAPIView):
     serializer_class = BoletoSerializer
 
     def get_queryset(self):
-        return Boleto.objects.filter(
-            reserva__pasajero__usuario=self.request.user
-        ).select_related("reserva", "reserva__vuelo").order_by("-fecha_emision")
-        
+        return BoletoService.get_by_user(self.request.user).order_by("-fecha_emision")
+
+
 class BoletoPorCodiogoAPIView(AuthViewMixin, RetrieveAPIView):
     """
     GET /api/boletos/codigo/<codigo_barra>/ -> detalle de un boleto por código de barra
     """
-
+    
     serializer_class = BoletoSerializer
-
+    
     def get_object(self):
         codigo_barra = self.kwargs["codigo_barra"]
-        boleto = get_object_or_404(
-            Boleto.objects.select_related("reserva", "reserva__vuelo"),
-            codigo_barra=codigo_barra,
-            reserva__pasajero__usuario=self.request.user
-        )
-        return boleto
-    
+        return BoletoService.get_by_codigo_barra(codigo_barra, self.request.user)
 
 # class BoletoListCreateAPIView(ListCreateAPIView, AuthViewMixin):
 #     """

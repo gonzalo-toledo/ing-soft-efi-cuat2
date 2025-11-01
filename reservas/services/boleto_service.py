@@ -21,3 +21,24 @@ class BoletoService:
         boleto.estado = 'Anulado'
         boleto.save()
         return boleto
+    
+    @staticmethod
+    def get_all():
+        return BoletoRepository.get_all()
+    
+    @staticmethod
+    def get_by_id(boleto_id):
+        return BoletoRepository.get_by_id(boleto_id)
+    
+    @staticmethod
+    def get_by_codigo_barra(codigo):
+        return BoletoRepository.get_by_codigo_barra(codigo)
+    
+    @staticmethod
+    def delete(boleto_id):
+        boleto = BoletoRepository.get_by_id(boleto_id)
+        BoletoRepository.delete(boleto)
+
+    @staticmethod
+    def get_by_user(user):
+        return BoletoRepository.get_by_user(user)

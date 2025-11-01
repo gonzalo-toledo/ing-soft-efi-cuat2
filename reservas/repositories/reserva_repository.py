@@ -5,8 +5,11 @@ class ReservaRepository:
 
     @staticmethod
     def get_all():
-        return Reserva.objects.all()
+        return Reserva.objects.select_related("vuelo", "pasajero", "asiento").all()
     
+    def get_by_user(user):
+        return Reserva.objects.filter(pasajero__usuario=user).select_related("vuelo", "pasajero", "asiento")
+
     @staticmethod
     def get_flight_reservations(vuelo_id):
         """ Obtiene todas las reservas asociadas a un vuelo específico.

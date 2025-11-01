@@ -85,3 +85,37 @@ class ReservaService:
         reserva = ReservaRepository.get_by_id(reserva_id)
         reserva.estado = 'Cancelada'
         return ReservaRepository.update(reserva, estado='Cancelada')
+
+    @staticmethod
+    def get_all():
+        return ReservaRepository.get_all()
+
+    @staticmethod
+    def get_by_user(user):
+        return ReservaRepository.get_by_user(user)
+
+    @staticmethod
+    def get_flight_reservations(vuelo_id):
+        return ReservaRepository.get_flight_reservations(vuelo_id)
+    
+    @staticmethod
+    def get_by_asiento(asiento_id):
+        return ReservaRepository.get_by_asiento(asiento_id)
+    
+    @staticmethod
+    def get_by_id(reserva_id):
+        return ReservaRepository.get_by_id(reserva_id)
+    
+    @staticmethod
+    def get_by_pasajero(pasajero_id):
+        return ReservaRepository.get_by_pasajero(pasajero_id)
+    
+    @staticmethod
+    def get_reservas_by_pasajero(pasajero_id):
+        return ReservaRepository.get_reservas_by_pasajero(pasajero_id)
+    
+    @staticmethod
+    def delete(reserva):
+        return ReservaRepository.delete(reserva)
+    
+    

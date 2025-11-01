@@ -75,4 +75,4 @@ class AsientoRepository:
         """
         Obtener todos los asientos de un avión específico.
         """
-        return Asiento.objects.filter(avion_id=avion_id)
+        return Asiento.objects.filter(avion_id=avion_id).order_by('fila', 'columna')
