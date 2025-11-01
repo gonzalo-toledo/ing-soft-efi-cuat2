@@ -1,4 +1,6 @@
 from pasajeros.repositories.pasajero_repository import PasajeroRepository
+from reservas.repositories.reserva_repository import ReservaRepository
+from django.http import Http404
 
 class PasajeroService:
 
@@ -45,12 +47,15 @@ class PasajeroService:
         return PasajeroRepository.get_all_by_user(user_id)
     
     @staticmethod
-    def obtener_reservas(pasajero_id):
-        """ Obtiene todas las reservas asociadas a un pasajero.
-        :param pasajero_id: ID del pasajero.
-        :return: Lista de instancias de Reserva.
+    def obtener_reservas(pasajero_id, estado=None):
         """
-        return PasajeroRepository.get_reservas_by_pasajero(pasajero_id)
+        Devuelve las reservas de un pasajero (filtradas opcionalmente por estado).
+        """
+        pasajero = PasajeroRepository.get_by_id(pasajero_id)
+        if not pasajero:
+            raise Http404("Pasajero no encontrado.")
+
+        return ReservaRepository.filter_by_pasajero(pasajero.id, estado)
 
     @staticmethod
     def eliminar_pasajero(pasajero_id):

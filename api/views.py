@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.exceptions import NotFound
 from rest_framework.generics import (
     CreateAPIView,
     ListCreateAPIView,
@@ -33,6 +34,7 @@ from api.serializers import (
     ReservaSerializer,
     UserSerializer,
     VueloModelSerializer,
+    PasajeroPorVueloSerializer
 )
 from pasajeros.models import Pasajero
 from reservas.models import Boleto, Reserva
@@ -144,20 +146,36 @@ class PasajeroDetailView(AuthViewMixin, RetrieveAPIView): #RetrieveAPIView hace 
             raise Http404("Este pasajero no pertenece al usuario indicado.")
         return pasajero
 
-class PasajeroReservasView(AuthViewMixin, ListAPIView):
+class BasePasajeroReservasView(AuthViewMixin, ListAPIView):
     """
-    GET /api/pasajeros/<id>/reservas/ -> lista reservas de un pasajero
+    Vista base para listar reservas de un pasajero (filtradas por estado si corresponde).
     """
-
     serializer_class = ReservaSerializer
+    estado = None  # se puede sobrescribir en subclases
 
     def get_queryset(self):
         user_pk = self.kwargs["user_pk"]
         pasajero_pk = self.kwargs["pk"]
+
         pasajero = PasajeroService.obtener_por_id(pasajero_pk)
         if pasajero.usuario_id != user_pk:
-            raise Http404("Este pasajero no pertenece al usuario indicado.")
-        return PasajeroService.obtener_reservas(pasajero_pk)
+            raise NotFound("Este pasajero no pertenece al usuario indicado.")
+
+        return PasajeroService.obtener_reservas(pasajero_pk, estado=self.estado)
+
+class PasajeroReservasView(BasePasajeroReservasView):
+    """GET /api/users/<user_pk>/pasajeros/<id>/reservas/"""
+    estado = None  # todas las reservas
+
+
+class PasajeroReservasConfirmadasView(BasePasajeroReservasView):
+    """GET /api/users/<user_pk>/pasajeros/<id>/reservas/confirmadas"""
+    estado = "Confirmada"
+
+
+class PasajeroReservasPendientesView(BasePasajeroReservasView):
+    """GET /api/users/<user_pk>/pasajeros/<id>/reservas/pendientes"""
+    estado = "Pendiente"
 
 # USUARIO + PASAJERO
 class RegistroCreateView(CreateAPIView):
@@ -288,7 +306,18 @@ class AsientoListAPIView(APIView, AuthAdminViewMixin):
         serializer = AsientoSerializer(asientos, many=True)
         return Response(serializer.data)
 
+class AsientoDisponibilidadAPIView(AuthViewMixin, APIView):
+    """
+    GET /api/vuelos/<vuelo_id>/asientos/<asiento_id>/disponibilidad/
+    Verifica si un asiento está disponible para un vuelo.
+    """
 
+    def get(self, request, vuelo_id, asiento_id):
+        try:
+            data = AsientoService.verificar_disponibilidad(vuelo_id, asiento_id)
+            return Response(data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # VUELOS (con APIView)
 # class VueloListCreateAPIView(APIView):
@@ -388,7 +417,7 @@ class VueloListCreateAPIView(AuthAdminViewMixin, ListCreateAPIView):
         serializer.instance = vuelo
 
 
-class VueloDetailAPIView(AuthAdminViewMixin, RetrieveUpdateDestroyAPIView):
+class VueloRetrieveUpdateDestroyAPIView(AuthAdminViewMixin, RetrieveUpdateDestroyAPIView):
     """
     GET /api/vuelos/<id>/ -> detalle de un vuelo
     PUT /api/vuelos/<id>/ -> actualizar vuelo
@@ -604,6 +633,19 @@ class BoletoPorCodiogoAPIView(AuthViewMixin, RetrieveAPIView):
 #====================================================
 # ESTADISTICAS GENERALES DE VUELOS
 #====================================================
+
+class PasajerosPorVueloAPIView(AuthAdminViewMixin, APIView):
+    """
+    GET /api/vuelos/<vuelo_id>/pasajeros/ -> lista pasajeros con reservas activas en un vuelo
+    """
+
+    def get(self, request, vuelo_id):
+        try:
+            pasajeros = ReservaService.obtener_pasajeros_por_vuelo(vuelo_id)
+            serializer = PasajeroPorVueloSerializer(pasajeros, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class EstadisticasGeneralesAPIView(APIView, AuthAdminViewMixin):
     """

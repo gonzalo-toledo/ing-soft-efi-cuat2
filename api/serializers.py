@@ -85,6 +85,14 @@ class PasajeroSerializer(serializers.ModelSerializer):
             'telefono',
         ]
 
+class PasajeroPorVueloSerializer(serializers.Serializer):
+    id = serializers.IntegerField(source="pasajero__id")
+    nombre = serializers.CharField(source="pasajero__nombre")
+    apellido = serializers.CharField(source="pasajero__apellido")
+    pasaporte = serializers.CharField(source="pasajero__pasaporte")
+    email = serializers.EmailField(source="pasajero__email")
+    telefono = serializers.CharField(source="pasajero__telefono")
+    estado = serializers.CharField()
 
 #USUARIO + PASAJERO
 class RegistroSerializer(serializers.ModelSerializer):

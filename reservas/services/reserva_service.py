@@ -1,4 +1,5 @@
 from reservas.repositories.reserva_repository import ReservaRepository
+from vuelos.repositories.vuelo_repository import VueloRepository
 from reservas.models import Reserva
 from pasajeros.models import Pasajero
 from vuelos.models import Vuelo
@@ -118,4 +119,14 @@ class ReservaService:
     def delete(reserva):
         return ReservaRepository.delete(reserva)
     
-    
+    @staticmethod
+    def obtener_pasajeros_por_vuelo(vuelo_id: int):
+        """
+        Devuelve la lista de pasajeros con reservas activas en un vuelo.
+        Valida que el vuelo exista.
+        """
+        vuelo = VueloRepository.get_by_id(vuelo_id)
+        if not vuelo:
+            raise ValidationError("Vuelo no encontrado.")
+
+        return ReservaRepository.get_pasajeros_por_vuelo(vuelo_id)

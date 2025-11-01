@@ -58,3 +58,38 @@ class ReservaRepository:
     @staticmethod
     def delete(reserva):
         reserva.delete()
+
+    @staticmethod
+    def filter_by_pasajero(pasajero_id, estado=None):
+        """
+        Devuelve reservas de un pasajero (opcionalmente filtradas por estado).
+        """
+        qs = Reserva.objects.select_related("vuelo", "pasajero", "asiento").filter(
+            pasajero_id=pasajero_id
+        )
+        if estado:
+            qs = qs.filter(estado=estado)
+        return qs
+
+    @staticmethod
+    def get_pasajeros_por_vuelo(vuelo_id: int):
+        """
+        Devuelve los pasajeros con reservas activas (confirmadas o pendientes) en un vuelo.
+        """
+        return (
+            Reserva.objects.select_related("pasajero", "vuelo")
+            .filter(
+                vuelo_id=vuelo_id,
+                activa=True,
+                estado__in=["Confirmada", "Pendiente"]
+            )
+            .values(
+                "pasajero__id",
+                "pasajero__nombre",
+                "pasajero__apellido",
+                "pasajero__pasaporte",
+                "pasajero__email",
+                "pasajero__telefono",
+                "estado",
+            )
+        )

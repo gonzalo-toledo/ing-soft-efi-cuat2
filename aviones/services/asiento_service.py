@@ -1,5 +1,7 @@
 from aviones.models import Asiento, Avion
 from aviones.repositories.asiento_repository import AsientoRepository
+from vuelos.repositories.vuelo_repository import VueloRepository
+from django.core.exceptions import ValidationError
 
 class AsientoService:
     @staticmethod
@@ -75,3 +77,29 @@ class AsientoService:
         Obtener todos los asientos de un avión específico.
         """
         return AsientoRepository.get_by_avion(avion_id)
+    
+    @staticmethod
+    def verificar_disponibilidad(vuelo_id: int, asiento_id: int) -> dict:
+        """
+        Verifica si un asiento pertenece al avión del vuelo y si está disponible.
+        """
+        vuelo = VueloRepository.get_by_id(vuelo_id)
+        asiento = AsientoRepository.get_by_id(asiento_id)
+
+        # Validar que el asiento pertenece al avión de este vuelo
+        if asiento.avion_id != vuelo.avion_id:
+            raise ValidationError("El asiento no pertenece al avión asignado al vuelo.")
+
+        # Verificar si está ocupado
+        disponible = AsientoRepository.esta_disponible(asiento_id, vuelo_id)
+
+        return {
+            "vuelo_id": vuelo.id,
+            "asiento_id": asiento.id,
+            "disponible": disponible,
+            "mensaje": (
+                "El asiento está disponible para este vuelo."
+                if disponible
+                else "El asiento ya está reservado para este vuelo."
+            ),
+        }

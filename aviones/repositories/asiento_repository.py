@@ -1,4 +1,5 @@
 from aviones.models import Asiento, Avion
+from reservas.models import Reserva
 
 class AsientoRepository:
     @staticmethod
@@ -76,3 +77,15 @@ class AsientoRepository:
         Obtener todos los asientos de un avión específico.
         """
         return Asiento.objects.filter(avion_id=avion_id).order_by('fila', 'columna')
+    
+    @staticmethod
+    def esta_disponible(asiento_id: int, vuelo_id: int) -> bool:
+        """
+        Verifica si el asiento está disponible en el vuelo dado.
+        """
+        return not Reserva.objects.filter(
+            vuelo_id=vuelo_id,
+            asiento_id=asiento_id,
+            activa=True,
+            estado__in=["Confirmada", "Pendiente"]
+        ).exists()
